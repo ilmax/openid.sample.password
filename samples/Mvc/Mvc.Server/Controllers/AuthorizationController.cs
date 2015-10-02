@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Data.Entity;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -14,11 +14,14 @@ using Owin;
 using Owin.Security.OpenIdConnect.Extensions;
 using Owin.Security.OpenIdConnect.Server;
 
-namespace Mvc.Server.Controllers {
-    public class AuthorizationController : Controller {
+namespace Mvc.Server.Controllers
+{
+    public class AuthorizationController : Controller
+    {
         [AcceptVerbs(HttpVerbs.Get | HttpVerbs.Post)]
         [Route("~/connect/authorize")]
-        public async Task<ActionResult> Authorize(CancellationToken cancellationToken) {
+        public async Task<ActionResult> Authorize(CancellationToken cancellationToken)
+        {
             // Note: when a fatal error occurs during the request processing, an OpenID Connect response
             // is prematurely forged and added to the OWIN context by OpenIdConnectServerHandler.
             // In this case, the OpenID Connect request is null and cannot be used.
@@ -27,17 +30,27 @@ namespace Mvc.Server.Controllers {
             // You can safely remove this part and let Owin.Security.OpenIdConnect.Server automatically
             // handle the unrecoverable errors by switching ApplicationCanDisplayErrors to false in Startup.cs
             var response = OwinContext.GetOpenIdConnectResponse();
-            if (response != null) {
+            if (response != null)
+            {
                 return View("Error", response);
             }
 
             // Extract the authorization request from the cache, the query string or the request form.
             var request = OwinContext.GetOpenIdConnectRequest();
-            if (request == null) {
-                return View("Error", new OpenIdConnectMessage {
+            if (request == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
                     Error = "invalid_request",
                     ErrorDescription = "An internal error has occurred"
                 });
+            }
+
+            // If the user is actually already authenticated (because of a previous login with remember me checked)
+            // we skip the login form and complete the Authorization phase.
+            if (User.Identity.IsAuthenticated)
+            {
+                return await SignInOpenIdConnect(request);
             }
 
             // Note: authentication could be theorically enforced at the filter level via AuthorizeAttribute
@@ -45,55 +58,43 @@ namespace Mvc.Server.Controllers {
             // only uses 302 responses to redirect the user agent to the login page, making it incompatible with POST.
             // To work around this limitation, the OpenID Connect request is saved in the cache and will be
             // restored in the other "Authorize" method, after the authentication process has been completed.
-            if (User.Identity == null || !User.Identity.IsAuthenticated) {
-                return RedirectToAction("SignIn", "Authentication", new {
-                    returnUrl = Url.Action("Authorize", new {
-                        unique_id = request.GetUniqueIdentifier()
-                    })
-                });
-            }
-
-            // Note: Owin.Security.OpenIdConnect.Server automatically ensures an application
-            // corresponds to the client_id specified in the authorization request using
-            // IOpenIdConnectServerProvider.ValidateClientRedirectUri (see AuthorizationProvider.cs).
-            // In theory, this null check is thus not strictly necessary. That said, a race condition
-            // and a null reference exception could appear here if you manually removed the application
-            // details from the database after the initial check made by Owin.Security.OpenIdConnect.Server.
-            var application = await GetApplicationAsync(request.ClientId, cancellationToken);
-            if (application == null) {
-                return View("Error", new OpenIdConnectMessage {
-                    Error = "invalid_client",
-                    ErrorDescription = "Details concerning the calling client application cannot be found in the database"
-                });
-            }
-
-            // Note: in a real world application, you'd probably prefer creating a specific view model.
-            return View("Authorize", Tuple.Create(request, application));
+            Debug.Assert(!User.Identity.IsAuthenticated);
+            return View("Login", new LoginViewModel(request.GetUniqueIdentifier()));
         }
-        
+
         [Authorize, HttpPost, Route("~/connect/authorize/accept"), ValidateAntiForgeryToken]
-        public async Task<ActionResult> Accept(CancellationToken cancellationToken) {
+        public async Task<ActionResult> Accept(CancellationToken cancellationToken)
+        {
             // Extract the authorization request from the cache, the query string or the request form.
             var request = OwinContext.GetOpenIdConnectRequest();
-            if (request == null) {
-                return View("Error", new OpenIdConnectMessage {
+            if (request == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
                     Error = "invalid_request",
                     ErrorDescription = "An internal error has occurred"
                 });
             }
 
+            return await SignInOpenIdConnect(request);
+        }
+
+        private async Task<ActionResult> SignInOpenIdConnect(OpenIdConnectMessage request)
+        {
             // Create a new ClaimsIdentity containing the claims that
             // will be used to create an id_token, a token or a code.
             var identity = new ClaimsIdentity(OpenIdConnectServerDefaults.AuthenticationType);
 
-            foreach (var claim in OwinContext.Authentication.User.Claims) {
+            foreach (var claim in OwinContext.Authentication.User.Claims)
+            {
                 // Allow ClaimTypes.Name to be added in the id_token.
                 // ClaimTypes.NameIdentifier is automatically added, even if its
                 // destination is not defined or doesn't include "id_token".
                 // The other claims won't be visible for the client application.
-                if (claim.Type == ClaimTypes.Name) {
+                if (claim.Type == ClaimTypes.Name)
+                {
                     claim.WithDestination("id_token")
-                         .WithDestination("token");
+                        .WithDestination("token");
                 }
 
                 identity.AddClaim(claim);
@@ -106,8 +107,10 @@ namespace Mvc.Server.Controllers {
             // and a null reference exception could appear here if you manually removed the application
             // details from the database after the initial check made by Owin.Security.OpenIdConnect.Server.
             var application = await GetApplicationAsync(request.ClientId, CancellationToken.None);
-            if (application == null) {
-                return View("Error", new OpenIdConnectMessage {
+            if (application == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
                     Error = "invalid_client",
                     ErrorDescription = "Details concerning the calling client application cannot be found in the database"
                 });
@@ -131,11 +134,14 @@ namespace Mvc.Server.Controllers {
         }
 
         [Authorize, HttpPost, Route("~/connect/authorize/deny"), ValidateAntiForgeryToken]
-        public ActionResult Deny(CancellationToken cancellationToken) {
+        public ActionResult Deny(CancellationToken cancellationToken)
+        {
             // Extract the authorization request from the cache, the query string or the request form.
             var request = OwinContext.GetOpenIdConnectRequest();
-            if (request == null) {
-                return View("Error", new OpenIdConnectMessage {
+            if (request == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
                     Error = "invalid_request",
                     ErrorDescription = "An internal error has occurred"
                 });
@@ -144,7 +150,8 @@ namespace Mvc.Server.Controllers {
             // Notify Owin.Security.OpenIdConnect.Server that the authorization grant has been denied.
             // Note: OpenIdConnectServerHandler will automatically take care of redirecting
             // the user agent to the client application using the appropriate response_mode.
-            OwinContext.SetOpenIdConnectResponse(new OpenIdConnectMessage {
+            OwinContext.SetOpenIdConnectResponse(new OpenIdConnectMessage
+            {
                 Error = "access_denied",
                 ErrorDescription = "The authorization grant has been denied by the resource owner",
                 RedirectUri = request.RedirectUri,
@@ -154,8 +161,102 @@ namespace Mvc.Server.Controllers {
             return new HttpStatusCodeResult(200);
         }
 
+        // This route should start with /connect/authorize, the value comes from OIDC Middelware defaults and can be changed in UseOpenIdConnectServer. 
+        // The OIDC middelware should run for this request to redirect back to the client if the authentication phase completes succesfully by using OwinContext.Authentication.SignIn(identity).
+        [HttpPost, Route("~/connect/authorize/login"), ValidateAntiForgeryToken]
+        public async Task<ActionResult> PasswordLogin(CancellationToken cancellationToken, LoginModel login)
+        {
+            Debug.Assert(!User.Identity.IsAuthenticated);
+
+            // Extract the authorization request from the cache, the query string or the request form.
+            var request = OwinContext.GetOpenIdConnectRequest();
+            if (request == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
+                    Error = "invalid_request",
+                    ErrorDescription = "An internal error has occurred"
+                });
+            }
+
+            // Note: Owin.Security.OpenIdConnect.Server automatically ensures an application
+            // corresponds to the client_id specified in the authorization request using
+            // IOpenIdConnectServerProvider.ValidateClientRedirectUri (see AuthorizationProvider.cs).
+            // In theory, this null check is thus not strictly necessary. That said, a race condition
+            // and a null reference exception could appear here if you manually removed the application
+            // details from the database after the initial check made by Owin.Security.OpenIdConnect.Server.
+            var application = await GetApplicationAsync(request.ClientId, cancellationToken);
+            if (application == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
+                    Error = "invalid_client",
+                    ErrorDescription = "Details concerning the calling client application cannot be found in the database"
+                });
+            }
+
+            // Implement your credential validation logic and create an identity with all necessary claims
+            // NOTE! you MUST add at least the "sub" or ClaimTypes.NameIdentifier claim to the created identity
+            if (login.UserName == login.Password)
+            {
+                var identity = new ClaimsIdentity("ServerCookie");
+                identity.AddClaim(new Claim(ClaimTypes.Name, login.UserName).WithDestination("id_token token"));
+                identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, "1").WithDestination("id_token token"));
+
+                OwinContext.Authentication.SignIn(new Microsoft.Owin.Security.AuthenticationProperties { IsPersistent = login.RememberMe }, identity);
+
+                if (application.RequireUserConsent)
+                {
+                    return RedirectToAction("Consent", new { unique_id = request.GetUniqueIdentifier() });
+                }
+
+                return new HttpStatusCodeResult(200);
+            }
+
+            return View("Login", new LoginViewModel(login.Unique_Id, "Wrong password"));
+        }
+
+        [Authorize, Route("~/connect/authorize/consent")]
+        public async Task<ActionResult> Consent(CancellationToken cancellationToken)
+        {
+            // Extract the authorization request from the cache, the query string or the request form.
+            var request = OwinContext.GetOpenIdConnectRequest();
+            if (request == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
+                    Error = "invalid_request",
+                    ErrorDescription = "An internal error has occurred"
+                });
+            }
+
+            // Note: Owin.Security.OpenIdConnect.Server automatically ensures an application
+            // corresponds to the client_id specified in the authorization request using
+            // IOpenIdConnectServerProvider.ValidateClientRedirectUri (see AuthorizationProvider.cs).
+            // In theory, this null check is thus not strictly necessary. That said, a race condition
+            // and a null reference exception could appear here if you manually removed the application
+            // details from the database after the initial check made by Owin.Security.OpenIdConnect.Server.
+            var application = await GetApplicationAsync(request.ClientId, cancellationToken);
+            if (application == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
+                    Error = "invalid_client",
+                    ErrorDescription = "Details concerning the calling client application cannot be found in the database"
+                });
+            }
+
+            // Note this is because we generate an AntiForgeryToken in both Views (Authorize & Login) so we should consume (remove)
+            // the token used by Login view.
+            request.Parameters.Remove("__RequestVerificationToken");
+
+            // Note: in a real world application, you'd probably prefer creating a specific view model.
+            return View("Authorize", Tuple.Create(request, application));
+        }
+
         [HttpGet, Route("~/connect/logout")]
-        public async Task<ActionResult> Logout() {
+        public async Task<ActionResult> Logout()
+        {
             // Note: when a fatal error occurs during the request processing, an OpenID Connect response
             // is prematurely forged and added to the OWIN context by OpenIdConnectServerHandler.
             // In this case, the OpenID Connect request is null and cannot be used.
@@ -164,7 +265,8 @@ namespace Mvc.Server.Controllers {
             // You can safely remove this part and let Owin.Security.OpenIdConnect.Server automatically
             // handle the unrecoverable errors by switching ApplicationCanDisplayErrors to false in Startup.cs
             var response = OwinContext.GetOpenIdConnectResponse();
-            if (response != null) {
+            if (response != null)
+            {
                 return View("Error", response);
             }
 
@@ -175,8 +277,10 @@ namespace Mvc.Server.Controllers {
 
             // Extract the logout request from the OWIN environment.
             var request = OwinContext.GetOpenIdConnectRequest();
-            if (request == null) {
-                return View("Error", new OpenIdConnectMessage {
+            if (request == null)
+            {
+                return View("Error", new OpenIdConnectMessage
+                {
                     Error = "invalid_request",
                     ErrorDescription = "An internal error has occurred"
                 });
@@ -187,7 +291,8 @@ namespace Mvc.Server.Controllers {
 
         [HttpPost, Route("~/connect/logout")]
         [ValidateAntiForgeryToken]
-        public ActionResult Logout(CancellationToken cancellationToken) {
+        public ActionResult Logout(CancellationToken cancellationToken)
+        {
             // Instruct the cookies middleware to delete the local cookie created
             // when the user agent is redirected from the external identity provider
             // after a successful authentication flow (e.g Google or Facebook).
@@ -202,14 +307,17 @@ namespace Mvc.Server.Controllers {
 
             return new HttpStatusCodeResult(200);
         }
-        
+
         /// <summary>
         /// Gets the IOwinContext instance associated with the current request.
         /// </summary>
-        protected IOwinContext OwinContext {
-            get {
+        protected IOwinContext OwinContext
+        {
+            get
+            {
                 var context = HttpContext.GetOwinContext();
-                if (context == null) {
+                if (context == null)
+                {
                     throw new NotSupportedException("An OWIN context cannot be extracted from HttpContext");
                 }
 
@@ -217,8 +325,10 @@ namespace Mvc.Server.Controllers {
             }
         }
 
-        protected virtual async Task<Application> GetApplicationAsync(string identifier, CancellationToken cancellationToken) {
-            using (var context = new ApplicationContext()) {
+        protected virtual async Task<Application> GetApplicationAsync(string identifier, CancellationToken cancellationToken)
+        {
+            using (var context = new ApplicationContext())
+            {
                 // Retrieve the application details corresponding to the requested client_id.
                 return await (from application in context.Applications
                               where application.ApplicationID == identifier

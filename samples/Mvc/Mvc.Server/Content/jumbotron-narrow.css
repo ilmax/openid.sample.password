@@ -77,3 +77,26 @@ body {
     border-bottom: 0;
   }
 }
+
+.div-login-msg {
+    border: 1px solid #dadfe1;
+    height: 30px;
+    line-height: 28px;
+    -moz-transition: all ease-in-out 500ms;
+    -o-transition: all ease-in-out 500ms;
+    -webkit-transition: all ease-in-out 500ms;
+    transition: all ease-in-out 500ms;
+}
+
+.icon-login-msg{
+    width: 30px;
+    float: left;
+    line-height: 28px;
+    text-align: center;
+    background-color: #dadfe1;
+    margin-right: 5px;
+    -moz-transition: all ease-in-out 500ms;
+    -o-transition: all ease-in-out 500ms;
+    -webkit-transition: all ease-in-out 500ms;
+    transition: all ease-in-out 500ms;
+}

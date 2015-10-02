@@ -174,13 +174,13 @@
     <Content Include="Scripts\jquery-2.1.3.min.js" />
     <Content Include="Scripts\npm.js" />
     <Content Include="Views\Shared\Authorize.cshtml" />
-    <Content Include="Views\Shared\SignIn.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\_Layout.cshtml" />
     <Content Include="Views\_ViewStart.cshtml" />
     <Content Include="Views\Web.config" />
     <Content Include="Scripts\jquery-2.1.3.min.map" />
     <Content Include="Views\Shared\Logout.cshtml" />
+    <Content Include="Views\Shared\Login.cshtml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -189,17 +189,20 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Web.config" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controllers\ResourceController.cs" />
-    <Compile Include="Extensions\OwinExtensions.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\Application.cs" />
     <Compile Include="Models\ApplicationContextInitializer.cs" />
     <Compile Include="Models\ApplicationContext.cs" />
+    <Compile Include="Models\LoginModel.cs" />
+    <Compile Include="Models\LoginViewModel.cs" />
     <Compile Include="Models\Nonce.cs" />
     <Compile Include="Providers\AuthorizationProvider.cs" />
     <Compile Include="Controllers\AuthorizationController.cs" />

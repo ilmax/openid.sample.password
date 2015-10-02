@@ -11,6 +11,16 @@ namespace Mvc.Server.Models {
                 LogoutRedirectUri = "http://localhost:56854/",
                 Secret = "secret_secret_secret"
             });
+
+            context.Applications.Add(new Application
+            {
+                ApplicationID = "myClient2",
+                DisplayName = "My client application",
+                RedirectUri = "http://localhost:56854/oidc",
+                LogoutRedirectUri = "http://localhost:56854/",
+                Secret = "secret_secret_secret",
+                RequireUserConsent = true
+            });
         }
     }
 }

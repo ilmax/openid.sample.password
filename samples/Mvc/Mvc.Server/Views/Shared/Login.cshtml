@@ -1,0 +1,58 @@
+﻿@model Mvc.Server.Models.LoginViewModel
+@{
+    ViewBag.Title = "Login";
+}
+
+<div class="jumbotron">
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <h1 style="color:red">@Model.Error</h1>
+    }
+
+    <form id="login-form" action="/connect/authorize/login" enctype="application/x-www-form-urlencoded" method="post">
+        @Html.AntiForgeryToken();
+        <div class="modal-header">
+            <h2>Authorization Server</h2>
+        </div>
+
+        <div class="modal-body">
+
+            <input type="hidden" name="unique_id" value="@Model.UniqueId" />
+
+            <div class="form-group">
+                <div class="row">
+                    <input id="UserName" class="form-control" type="text" placeholder="Username" required name="UserName">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="row">
+                    <input id="Password" class="form-control" type="password" placeholder="Password" required name="Password">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="row">
+                    <div style="float:left">
+                        <label>
+                            <input type="checkbox" id="RememberMe" name="RememberMe" value="true"> Remember me
+                        </label>
+                    </div>
+                    @*<div class="checkbox" style="float:left">
+                            <label>
+                            </label>
+                        </div>*@
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <div class="form-group">
+                <div class="row">
+                    <button type="submit" class="btn btn-primary btn-lg btn-block">Sign In</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

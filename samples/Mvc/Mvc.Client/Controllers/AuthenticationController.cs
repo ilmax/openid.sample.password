@@ -41,5 +41,23 @@ namespace Mvc.Client.Controllers {
             
             return new HttpStatusCodeResult(200);
         }
+
+        [HttpGet, Route("~/localsignout"), Authorize]
+        public ActionResult LocaSignOut()
+        {
+            var context = HttpContext.GetOwinContext();
+            if (context == null)
+            {
+                throw new NotSupportedException("An OWIN context cannot be extracted from HttpContext");
+            }
+
+            // Instruct the cookies middleware to delete the local cookie created when the user agent
+            // is redirected from the identity provider after a successful authorization flow.
+
+            // Used only to test remember me
+            context.Authentication.SignOut("ClientCookie");
+
+            return RedirectToAction("Index", "Home");
+        }
     }
 }

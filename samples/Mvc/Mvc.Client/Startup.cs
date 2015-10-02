@@ -32,6 +32,7 @@ namespace Mvc.Client {
 
                 // Note: these settings must match the application details inserted in
                 // the database at the server level (see ApplicationContextInitializer.cs).
+                // use myClient2 to view the consent screen.
                 ClientId = "myClient",
                 ClientSecret = "secret_secret_secret",
                 RedirectUri = "http://localhost:56854/oidc",
